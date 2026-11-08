@@ -3,7 +3,7 @@
   "model": {
     "file": "model/pipeline.joblib",
     "sha256": "3a3694f82dd64256bcd08ecc047f3ddeb8fb2b48470755a4b9d87bd676782d36",
-    "metadata_sha256": "d4ee8326adc0ce2b58c7400f6781e539370f2884c434f60efe3128213e5484a2",
+    "metadata_sha256": "bae6fd954915e33b6999e1d7c9bdd3397ac014968d56b6cd3761eb31b010da74",
     "algorithm": "hist_gradient_boosting",
     "scenario": "P0",
     "version": "untuned",
