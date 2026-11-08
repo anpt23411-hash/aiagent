@@ -1,0 +1,33 @@
+{
+  "service_version": "1.0.0",
+  "model": {
+    "file": "model/pipeline.joblib",
+    "sha256": "3a3694f82dd64256bcd08ecc047f3ddeb8fb2b48470755a4b9d87bd676782d36",
+    "metadata_sha256": "d4ee8326adc0ce2b58c7400f6781e539370f2884c434f60efe3128213e5484a2",
+    "algorithm": "hist_gradient_boosting",
+    "scenario": "P0",
+    "version": "untuned",
+    "training_source_sha256": "db70f1e34bc5326887ea3fb3d2a0854e82c577d55ef3a76fdfb25328631bd44d",
+    "training_python": "3.15.1",
+    "training_versions": {
+      "pandas": "3.1.0",
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "statsmodels": "0.15.0",
+      "scikit-learn": "1.9.1",
+      "imbalanced-learn": "0.14.2",
+      "xgboost": "3.4.1",
+      "shap": "0.54.1",
+      "matplotlib": "3.11.2",
+      "joblib": "1.6.0",
+      "openpyxl": "3.1.5"
+    }
+  },
+  "crm": {
+    "file": "data/crm_holdout.csv",
+    "sha256": "e3dfea5d600728d38e00320ffc2874640949066d768ecacff1eab57583ab65f1",
+    "rows": 1015,
+    "source": "Tập holdout (20%, phân tầng, seed 42) của bộ dữ liệu sau làm sạch; bỏ cột Churn",
+    "split_manifest": "reports/thesis_run/split_manifest.json"
+  }
+}

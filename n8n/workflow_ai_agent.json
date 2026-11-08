@@ -1,0 +1,1060 @@
+{
+  "name": "KLTN – AI Agent đánh giá nguy cơ rời bỏ",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "999d8383-6df8-509e-9773-1750f9aeef8a",
+      "name": "Khi có tin nhắn chat",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "c9db5b08-42f2-567a-bce9-0d99e79073dc"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kltn-agent-kiem-thu",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e9b9ba4a-e87f-5a1d-9ec0-bd9f57cdca57",
+      "name": "Webhook kiểm thử",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ],
+      "webhookId": "99bd00a7-0545-5522-8507-c73aab238249"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b3fbe4ad-848c-5b38-b90a-79992d3ee1d2",
+              "name": "chatInput",
+              "value": "={{ $json.chatInput ?? ($json.body ? $json.body.chatInput : '') ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "1cf10ee1-12d0-51b3-a9b9-fb76de3f386f",
+              "name": "sessionId",
+              "value": "={{ $json.sessionId ?? ($json.body && $json.body.sessionId ? $json.body.sessionId : $execution.id) }}",
+              "type": "string"
+            },
+            {
+              "id": "7a0d1fd8-8129-57a9-ad60-332696ef1310",
+              "name": "nguon",
+              "value": "={{ $json.body !== undefined ? 'kiem_thu' : 'chat' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3a3a96c2-f284-5904-9a32-4c2e30eea8af",
+      "name": "Chuẩn hóa đầu vào",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "hasOutputParser": false,
+        "options": {
+          "systemMessage": "CHỈ DẪN HỆ THỐNG – Trợ lý tra cứu nguy cơ rời bỏ khách hàng (phiên bản v1.0)\n\n1. VAI TRÒ\nBạn hỗ trợ nhân viên quản trị quan hệ khách hàng (CRM) tra cứu và hiểu kết quả của mô hình dự đoán nguy cơ rời bỏ trên cơ sở dữ liệu CRM thử nghiệm (1.015 hồ sơ). Bạn chỉ tra cứu và giải thích; không đưa ra quyết định thay người dùng. Luôn trả lời bằng tiếng Việt, ngắn gọn, rõ ràng.\n\n2. CÔNG CỤ (chỉ đọc dữ liệu)\n- get_customer: xem hồ sơ của một khách hàng theo CustomerID.\n- predict_risk: xác suất P(Churn = 1), điểm 1–10, nhóm nguy cơ và vị trí so với ngưỡng t* của một khách hàng.\n- explain_customer: các yếu tố đóng góp SHAP lớn nhất theo hai chiều của chính hồ sơ đó.\n- count_by_group: số lượng và tỷ trọng khách hàng theo nhóm nguy cơ, có thể kèm điều kiện lọc.\n- list_customers: danh sách khách hàng có xác suất cao nhất, có thể lọc theo nhóm nguy cơ và điều kiện.\nCách chọn công cụ:\n- Hỏi về nguy cơ, điểm, nhóm hoặc lý do nguy cơ của MỘT khách hàng: gọi predict_risk và explain_customer cho đúng mã đó, rồi lập báo cáo theo mẫu ở mục 6.\n- Hỏi thông tin hồ sơ: gọi get_customer.\n- Hỏi số lượng hoặc tỷ trọng: gọi count_by_group. Hỏi danh sách ưu tiên: gọi list_customers.\n- So sánh nhiều khách hàng: gọi predict_risk cho từng mã (thêm explain_customer nếu người dùng hỏi lý do).\n- Không gọi lại cùng một công cụ với cùng tham số trong một lượt trả lời. Không tự đếm, sắp xếp hay tính toán trên dữ liệu; mọi phép tổng hợp lấy từ công cụ.\n\n3. QUY TẮC SỐ LIỆU\n- Mọi xác suất, điểm, nhóm, ngưỡng, số lượng, tỷ trọng, danh sách và giá trị SHAP phải chép nguyên văn từ kết quả công cụ; ưu tiên các trường có đuôi _display (probability_display, probability_percent_display, threshold_display, share_display, shap_display).\n- Không ước lượng, không tự làm tròn lại, không đổi đơn vị, không quy đổi đóng góp SHAP thành phần trăm xác suất.\n- Chưa có kết quả công cụ thì không nêu bất kỳ con số nào về khách hàng.\n\n4. QUY TẮC DIỄN GIẢI\n- Xác suất là nguy cơ hồ sơ thuộc nhóm mang nhãn Churn = 1 theo dữ liệu nghiên cứu, không phải dự báo chắc chắn.\n- Đóng góp SHAP được đọc trên thang log-odds: dấu + làm tăng, dấu - làm giảm điểm dự đoán. Đây là cơ sở của dự đoán, không phải nguyên nhân rời bỏ và không phải tác động của can thiệp.\n- Nguy cơ cao không có nghĩa là can thiệp sẽ hiệu quả.\n\n5. PHẠM VI VÀ NGOẠI LỆ\n- Thiếu mã khách hàng hoặc yêu cầu mơ hồ (ví dụ \"khách này\") mà hội thoại trước chưa có mã: hỏi lại, không đoán, không gọi công cụ.\n- status = invalid_id: báo mã không hợp lệ, đề nghị nhập lại CustomerID là một số nguyên.\n- status = not_found: báo không tìm thấy hồ sơ và đề nghị kiểm tra lại mã; tuyệt đối không nêu xác suất, điểm hay nhóm nguy cơ.\n- status = invalid_input: nêu lý do theo trường message và hỏi lại điều kiện.\n- status = validation_error, explain_error hoặc service_error: thông báo không thể thực hiện yêu cầu và lý do ngắn gọn; không tự tạo kết quả; không gọi lại quá một lần.\n- Yêu cầu quyết định ưu đãi, mức giảm giá, quà tặng, chính sách can thiệp, sửa hoặc xóa dữ liệu, hay câu hỏi ngoài phạm vi: từ chối lịch sự và nêu phạm vi hỗ trợ (tra cứu hồ sơ, nguy cơ, giải thích, thống kê, danh sách).\n\n6. MẪU BÁO CÁO (yêu cầu về một khách hàng cụ thể)\n**Báo cáo nguy cơ – Khách hàng <customer_id>**\n1. Nhận diện: CustomerID <customer_id>; mô hình <model_version>; phạm vi dữ liệu: <data_scope>.\n2. Kết quả dự đoán: P(Churn = 1) = <probability_display> (<probability_percent_display>); điểm <score>/10; nhóm nguy cơ <risk_group> (điểm <risk_group_score_range>); <threshold_position> (t* = <threshold_display>).\n3. Yếu tố đóng góp chính: tối đa ba yếu tố làm tăng và ba yếu tố làm giảm từ explain_customer, mỗi dòng dạng \"<label> = <value>: <shap_display> (log-odds)\".\n4. Dữ liệu cần lưu ý: các trường bị thiếu đã được điền (missing_fields) và danh mục lạ (unknown_categories); nếu không có thì ghi \"Không có\".\n5. Lưu ý diễn giải: chép nguyên văn: \"Xác suất là nguy cơ hồ sơ thuộc nhóm mang nhãn Churn = 1 theo dữ liệu nghiên cứu, không phải dự báo chắc chắn rằng khách hàng sẽ rời bỏ. Các yếu tố đóng góp mô tả cơ sở của dự đoán trên thang log-odds, không phải nguyên nhân rời bỏ hay tác động của can thiệp. Một số biến (Complain, CouponUsed, OrderCount, CashbackAmount, PreferedOrderCat) mô tả tháng gần nhất nhưng từ điển dữ liệu không nêu mốc thời gian tham chiếu.\"\n6. Gợi ý xem xét: một đến ba gợi ý về thông tin người dùng có thể kiểm tra thêm trong hồ sơ, gắn với các yếu tố ở phần 3 (ví dụ Complain là yếu tố làm tăng lớn thì xem lại lịch sử khiếu nại gần nhất). Không đề xuất mức ưu đãi, quà tặng hay quyết định can thiệp.\nVới yêu cầu thống kê hoặc danh sách: trình bày bảng kết quả từ công cụ (kèm điều kiện lọc và tổng số hồ sơ) và một câu tóm tắt; không diễn giải theo từng hồ sơ.\nVới yêu cầu so sánh: một bảng các giá trị ở phần 2 cho từng khách hàng, sau đó một câu nhận xét chỉ dựa trên số liệu của công cụ.",
+          "maxIterations": 6,
+          "returnIntermediateSteps": true,
+          "enableStreaming": false
+        }
+      },
+      "id": "9f694f87-42bd-5df6-839e-ca44d7a3e767",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        520,
+        100
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4.1"
+        },
+        "options": {
+          "temperature": 0,
+          "maxTokens": 2000,
+          "timeout": 120000,
+          "maxRetries": 2
+        }
+      },
+      "id": "7bdbcc53-5955-563b-886f-786888871367",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        380,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}",
+        "contextWindowLength": 6
+      },
+      "id": "890c4d55-366f-58cd-aad2-244d7d6f2203",
+      "name": "Bộ nhớ hội thoại",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        520,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Tra cứu hồ sơ của MỘT khách hàng theo CustomerID trong CRM thử nghiệm: các trường được phép hiển thị và danh sách trường bị thiếu. Dùng khi người dùng hỏi thông tin hồ sơ. Trả về status not_found hoặc invalid_id nếu không có mã hoặc mã sai định dạng.",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tool": "get_customer",
+            "customer_id": "={{ $fromAI('customer_id', 'Mã CustomerID dạng chuỗi chữ số, chép đúng như người dùng nêu, ví dụ 50123', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tool",
+              "displayName": "tool",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "risk_group",
+              "displayName": "risk_group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "filters",
+              "displayName": "filters",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "97137541-7d95-5a04-84d8-18c8b345b2f4",
+      "name": "get_customer",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Tính nguy cơ của MỘT khách hàng theo CustomerID: P(Churn = 1), điểm 1-10, nhóm nguy cơ (thấp 1-2, trung bình 3-5, cao 6-10), vị trí so với ngưỡng t*, trường bị thiếu và danh mục lạ. Trả về status not_found hoặc invalid_id nếu không có mã hoặc mã sai định dạng.",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tool": "predict_risk",
+            "customer_id": "={{ $fromAI('customer_id', 'Mã CustomerID dạng chuỗi chữ số, chép đúng như người dùng nêu, ví dụ 50123', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tool",
+              "displayName": "tool",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "risk_group",
+              "displayName": "risk_group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "filters",
+              "displayName": "filters",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "0bf28b77-ad87-55b0-9d96-31efd52b6138",
+      "name": "predict_risk",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Giải thích dự đoán của MỘT khách hàng theo CustomerID: các yếu tố đóng góp SHAP lớn nhất làm tăng và làm giảm điểm (thang log-odds), kèm giá trị của thuộc tính. Không dùng cho tầm quan trọng chung của mô hình.",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tool": "explain_customer",
+            "customer_id": "={{ $fromAI('customer_id', 'Mã CustomerID dạng chuỗi chữ số, chép đúng như người dùng nêu, ví dụ 50123', 'string') }}",
+            "top_k": "={{ $fromAI('top_k', 'Số yếu tố mỗi chiều cần trả về, mặc định 3, tối đa 5', 'number', 3) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tool",
+              "displayName": "tool",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "risk_group",
+              "displayName": "risk_group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "filters",
+              "displayName": "filters",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "c4024590-8cbb-59dd-a4e8-5d3c2bf430e6",
+      "name": "explain_customer",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        940,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Đếm số khách hàng và tỷ trọng theo ba nhóm nguy cơ trong CRM thử nghiệm, có thể kèm điều kiện lọc. Dùng cho câu hỏi có bao nhiêu, tỷ lệ bao nhiêu.",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tool": "count_by_group",
+            "risk_group": "={{ $fromAI('risk_group', 'Nhóm nguy cơ cần xét: thấp, trung bình hoặc cao. Để chuỗi rỗng nếu không giới hạn nhóm', 'string', '') }}",
+            "filters": "={{ $fromAI('filters', 'Điều kiện lọc dạng chuỗi JSON; để chuỗi rỗng nếu không lọc. Trường so sánh bằng: CityTier (1-3), Complain (0 hoặc 1), SatisfactionScore (1-5), Gender, MaritalStatus, PreferredLoginDevice, PreferredPaymentMode, PreferedOrderCat. Trường theo khoảng với min và max: Tenure, DaySinceLastOrder, OrderCount, CashbackAmount, WarehouseToHome, HourSpendOnApp, NumberOfDeviceRegistered, NumberOfAddress, CouponUsed, OrderAmountHikeFromlastYear. Ví dụ: {\"CityTier\": 3, \"Complain\": 1} hoặc {\"Tenure\": {\"max\": 1} }', 'string', '') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tool",
+              "displayName": "tool",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "risk_group",
+              "displayName": "risk_group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "filters",
+              "displayName": "filters",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "2c5bf935-a3f2-5675-9dd1-559f5a2ff39a",
+      "name": "count_by_group",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1080,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Liệt kê các khách hàng có xác suất nguy cơ cao nhất theo thứ tự giảm dần, có thể lọc theo nhóm nguy cơ và điều kiện; tối đa 50 hồ sơ.",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $workflow.id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tool": "list_customers",
+            "risk_group": "={{ $fromAI('risk_group', 'Nhóm nguy cơ cần xét: thấp, trung bình hoặc cao. Để chuỗi rỗng nếu không giới hạn nhóm', 'string', '') }}",
+            "limit": "={{ $fromAI('limit', 'Số khách hàng cần liệt kê, mặc định 10, tối đa 50', 'number', 10) }}",
+            "filters": "={{ $fromAI('filters', 'Điều kiện lọc dạng chuỗi JSON; để chuỗi rỗng nếu không lọc. Trường so sánh bằng: CityTier (1-3), Complain (0 hoặc 1), SatisfactionScore (1-5), Gender, MaritalStatus, PreferredLoginDevice, PreferredPaymentMode, PreferedOrderCat. Trường theo khoảng với min và max: Tenure, DaySinceLastOrder, OrderCount, CashbackAmount, WarehouseToHome, HourSpendOnApp, NumberOfDeviceRegistered, NumberOfAddress, CouponUsed, OrderAmountHikeFromlastYear. Ví dụ: {\"CityTier\": 3, \"Complain\": 1} hoặc {\"Tenure\": {\"max\": 1} }', 'string', '') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tool",
+              "displayName": "tool",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "customer_id",
+              "displayName": "customer_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "top_k",
+              "displayName": "top_k",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": true
+            },
+            {
+              "id": "risk_group",
+              "displayName": "risk_group",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "filters",
+              "displayName": "filters",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "limit",
+              "displayName": "limit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "eb6ac590-6a7f-5e88-8fbb-b762c0505a0b",
+      "name": "list_customers",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1220,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Chuẩn hóa phản hồi cuối: lỗi mô hình ngôn ngữ hoặc chạm giới hạn số vòng được báo rõ (Bảng 3.18); giữ bước trung gian để kiểm thử.\nconst a = $input.first().json || {};\nconst vao = $('Chuẩn hóa đầu vào').first().json;\n// Phiên bản chỉ dẫn hệ thống đọc từ dòng đầu của System Message trong node AI Agent (một nguồn duy nhất).\nconst phienBan = () => { try { const sm = String((($('AI Agent').params || {}).options || {}).systemMessage || ''); return (sm.match(/phiên bản\\s+(v[\\w.]+)/i) || [])[1] || 'không rõ'; } catch (e) { return 'không rõ'; } };\nlet output = typeof a.output === 'string' ? a.output : '';\nlet trang_thai = 'ok';\nif (a.error) {\n  trang_thai = 'loi_agent';\n  output = 'Xin lỗi, hệ thống chưa xử lý được yêu cầu do lỗi kỹ thuật khi gọi mô hình ngôn ngữ. Vui lòng thử lại sau.';\n} else if (/stopped due to max iterations|max iterations/i.test(output)) {\n  trang_thai = 'cham_gioi_han_vong';\n  output = 'Chưa hoàn thành yêu cầu vì đã chạm giới hạn số bước xử lý. Vui lòng tách yêu cầu thành các câu hỏi nhỏ hơn.';\n} else if (!output.trim()) {\n  trang_thai = 'rong';\n  output = 'Xin lỗi, hệ thống chưa tạo được phản hồi cho yêu cầu này. Vui lòng thử lại.';\n}\nconst buoc = (a.intermediateSteps || []).map(s => ({ tool: s.action ? s.action.tool : '', input: s.action ? s.action.toolInput : null, observation: s.observation }));\nreturn [{ json: { output, trang_thai, nguon: vao.nguon, sessionId: vao.sessionId, intermediateSteps: buoc,\n  loi: a.error ? String(typeof a.error === 'string' ? a.error : JSON.stringify(a.error)).slice(0, 500) : '',\n  phien_ban_chi_dan: phienBan(), executionId: $execution.id } }];"
+      },
+      "id": "fd5a4e09-dbc3-5db4-b2ca-c65462f4ea38",
+      "name": "Hoàn thiện phản hồi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "943ffdad-cbc9-572c-818c-da82cb6da838",
+              "leftValue": "={{ $json.nguon }}",
+              "rightValue": "kiem_thu",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "6d345602-f3c3-5dfc-9ad2-24496c14e600",
+      "name": "Là lượt kiểm thử?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      },
+      "id": "724da046-eccc-5b0f-ab20-cb2356193ca7",
+      "name": "Trả kết quả kiểm thử",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "tool",
+              "type": "string"
+            },
+            {
+              "name": "customer_id",
+              "type": "string"
+            },
+            {
+              "name": "top_k",
+              "type": "number"
+            },
+            {
+              "name": "risk_group",
+              "type": "string"
+            },
+            {
+              "name": "filters",
+              "type": "string"
+            },
+            {
+              "name": "limit",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "id": "56a82ca0-8863-5ec0-9ec4-e4a4c18443ae",
+      "name": "Khi Agent gọi công cụ",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c63fe305-c680-52b0-bd5d-9fd3aa7e21d8",
+              "name": "dich_vu_url",
+              "value": "https://TEN-TAI-KHOAN-TEN-SPACE.hf.space",
+              "type": "string"
+            },
+            {
+              "id": "a2105744-d0ab-576d-8c93-9d7aff28d9d8",
+              "name": "thoi_gian_cho_ms",
+              "value": 60000,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {},
+        "includeOtherFields": true
+      },
+      "id": "d581bd95-2f84-50d5-b532-fc376869cb23",
+      "name": "Cấu hình dịch vụ (điền tại đây)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Kiểm tra tham số ở n8n trước khi gọi dịch vụ: chỉ năm công cụ chỉ-đọc, chỉ gửi đúng tham số của từng công cụ.\nconst x = $input.first().json;\nconst THAM_SO = { get_customer: ['customer_id'], predict_risk: ['customer_id'], explain_customer: ['customer_id', 'top_k'],\n  count_by_group: ['risk_group', 'filters'], list_customers: ['risk_group', 'limit', 'filters'] };\nconst url = String(x.dich_vu_url || '').trim().replace(/\\/+$/, '');\nconst tra = (status, message) => [{ json: { bo_qua_goi: true, tool: x.tool, ket_qua: { status, tool: x.tool, message } } }];\nif (!THAM_SO[x.tool]) return tra('invalid_input', 'Công cụ không hợp lệ: ' + x.tool);\nif (!/^https?:\\/\\/[^<>\\s]+$/.test(url)) return tra('service_error', 'Chưa cấu hình địa chỉ dịch vụ dự đoán (dich_vu_url) ở node \"Cấu hình dịch vụ (điền tại đây)\".');\nconst body = {};\nfor (const k of THAM_SO[x.tool]) { const v = x[k]; if (v !== undefined && v !== null && String(v).trim() !== '') body[k] = v; }\nif (typeof body.filters === 'string') {\n  const s = body.filters.trim();\n  if (s === '{}' || s === 'null') delete body.filters;\n  else { try { body.filters = JSON.parse(s); } catch (e) { return tra('invalid_input', 'filters phải là JSON hợp lệ, ví dụ {\"CityTier\": 3}.'); } }\n}\nreturn [{ json: { bo_qua_goi: false, tool: x.tool, url: url + '/tools/' + x.tool, body, thoi_gian_cho_ms: Number(x.thoi_gian_cho_ms) || 60000 } }];"
+      },
+      "id": "8f7a0f39-281a-5fde-a07b-15d0295a3cbf",
+      "name": "Kiểm tra tham số công cụ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5f1bdf01-db98-50aa-86b8-89a0f793c279",
+              "leftValue": "={{ !$json.bo_qua_goi }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "4744a7f7-a168-587e-bc9c-eade97898caa",
+      "name": "Cần gọi dịch vụ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        700,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": "={{ $json.thoi_gian_cho_ms }}"
+        }
+      },
+      "id": "734bfab9-2fba-59e4-ab40-25e7005e2770",
+      "name": "Gọi dịch vụ dự đoán",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        920,
+        680
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Trả kết quả gọn cho Agent; lỗi kết nối hoặc quá thời gian (sau khi đã thử lại một lần) thành status = service_error.\nconst it = $input.first().json || {};\nconst req = $('Kiểm tra tham số công cụ').first().json;\nlet out;\nif (req.bo_qua_goi) out = req.ket_qua;\nelse if (it.error) {\n  const e = it.error; const msg = typeof e === 'string' ? e : (e.message || JSON.stringify(e));\n  out = { status: 'service_error', tool: req.tool, message: 'Không gọi được dịch vụ dự đoán sau 2 lần thử: ' + String(msg).slice(0, 200) };\n} else out = it;\nif (out && out.field_descriptions && req.tool !== 'get_customer') delete out.field_descriptions;\nreturn [{ json: out }];"
+      },
+      "id": "f585d2e0-5662-5264-9fc4-c63ff5ead90a",
+      "name": "Rút gọn kết quả cho Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Nguyên mẫu AI Agent đánh giá nguy cơ rời bỏ (mục 3.10)\n- Chat: bấm **Open chat**. Kiểm thử tự động: POST tới **Webhook kiểm thử** (header xác thực).\n- **AI Agent** (Tools Agent): chỉ dẫn hệ thống v1.0, Max Iterations 6, trả bước trung gian, tắt streaming.\n- Năm công cụ gọi lại **chính workflow này** qua node *Khi Agent gọi công cụ* → dịch vụ dự đoán Python.\n- Lưu workflow trước khi chat: công cụ chạy bản đã lưu.",
+        "height": 300,
+        "width": 660,
+        "color": 5
+      },
+      "id": "1aaea535-99e8-5bd7-a631-0211dc74d19d",
+      "name": "Ghi chú: Agent",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -330
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### Quy trình con của các công cụ\nĐiền `dich_vu_url` (địa chỉ Space, không có dấu / ở cuối). Node **Gọi dịch vụ dự đoán** dùng credential *Header Auth* với tên header `X-API-Key`. Lỗi kết nối được thử lại 1 lần rồi trả `service_error` cho Agent.",
+        "height": 200,
+        "width": 660,
+        "color": 4
+      },
+      "id": "93d691fc-8b08-5e3e-893d-8e0ac28a4611",
+      "name": "Ghi chú: công cụ",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        500
+      ]
+    }
+  ],
+  "connections": {
+    "Khi có tin nhắn chat": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hóa đầu vào",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook kiểm thử": {
+      "main": [
+        [
+          {
+            "node": "Chuẩn hóa đầu vào",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bộ nhớ hội thoại": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chuẩn hóa đầu vào": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_customer": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "predict_risk": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "explain_customer": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "count_by_group": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_customers": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Hoàn thiện phản hồi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hoàn thiện phản hồi": {
+      "main": [
+        [
+          {
+            "node": "Là lượt kiểm thử?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Là lượt kiểm thử?": {
+      "main": [
+        [
+          {
+            "node": "Trả kết quả kiểm thử",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Khi Agent gọi công cụ": {
+      "main": [
+        [
+          {
+            "node": "Cấu hình dịch vụ (điền tại đây)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cấu hình dịch vụ (điền tại đây)": {
+      "main": [
+        [
+          {
+            "node": "Kiểm tra tham số công cụ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kiểm tra tham số công cụ": {
+      "main": [
+        [
+          {
+            "node": "Cần gọi dịch vụ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cần gọi dịch vụ?": {
+      "main": [
+        [
+          {
+            "node": "Gọi dịch vụ dự đoán",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rút gọn kết quả cho Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gọi dịch vụ dự đoán": {
+      "main": [
+        [
+          {
+            "node": "Rút gọn kết quả cho Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Ho_Chi_Minh",
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveManualExecutions": true
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

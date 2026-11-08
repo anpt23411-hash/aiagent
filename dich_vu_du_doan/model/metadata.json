@@ -1,0 +1,222 @@
+{
+  "algorithm": "hist_gradient_boosting",
+  "scenario": "P0",
+  "version": "untuned",
+  "threshold": 0.3594360844443061,
+  "calibrated": false,
+  "input_columns": [
+    "Tenure",
+    "PreferredLoginDevice",
+    "CityTier",
+    "WarehouseToHome",
+    "PreferredPaymentMode",
+    "Gender",
+    "HourSpendOnApp",
+    "NumberOfDeviceRegistered",
+    "PreferedOrderCat",
+    "SatisfactionScore",
+    "MaritalStatus",
+    "NumberOfAddress",
+    "Complain",
+    "OrderAmountHikeFromlastYear",
+    "CouponUsed",
+    "OrderCount",
+    "DaySinceLastOrder",
+    "CashbackAmount"
+  ],
+  "input_dtypes": {
+    "Tenure": "float64",
+    "PreferredLoginDevice": "string",
+    "CityTier": "int64",
+    "WarehouseToHome": "float64",
+    "PreferredPaymentMode": "string",
+    "Gender": "string",
+    "HourSpendOnApp": "float64",
+    "NumberOfDeviceRegistered": "int64",
+    "PreferedOrderCat": "string",
+    "SatisfactionScore": "int64",
+    "MaritalStatus": "string",
+    "NumberOfAddress": "int64",
+    "Complain": "int64",
+    "OrderAmountHikeFromlastYear": "float64",
+    "CouponUsed": "float64",
+    "OrderCount": "float64",
+    "DaySinceLastOrder": "float64",
+    "CashbackAmount": "float64"
+  },
+  "positive_class": 1,
+  "label_semantics_verified": false,
+  "score_rule": "min(10, 1 + floor(10*p))",
+  "risk_groups": {
+    "low": [
+      1,
+      2
+    ],
+    "medium": [
+      3,
+      5
+    ],
+    "high": [
+      6,
+      10
+    ]
+  },
+  "seed": 42,
+  "transformed_features": [
+    "Tenure",
+    "CityTier",
+    "WarehouseToHome",
+    "HourSpendOnApp",
+    "NumberOfDeviceRegistered",
+    "SatisfactionScore",
+    "NumberOfAddress",
+    "Complain",
+    "OrderAmountHikeFromlastYear",
+    "CouponUsed",
+    "OrderCount",
+    "DaySinceLastOrder",
+    "CashbackAmount",
+    "TenureMissing",
+    "WarehouseToHomeMissing",
+    "OrderAmountHikeFromlastYearMissing",
+    "CouponUsedMissing",
+    "OrderCountMissing",
+    "IsNewCustomer",
+    "Gender_1.0",
+    "MaritalStatus_1.0",
+    "MaritalStatus_2.0",
+    "PreferredLoginDevice_1.0",
+    "PreferredPaymentMode_1.0",
+    "PreferredPaymentMode_2.0",
+    "PreferredPaymentMode_3.0",
+    "PreferredPaymentMode_4.0",
+    "PreferedOrderCat_1.0",
+    "PreferedOrderCat_2.0",
+    "PreferedOrderCat_3.0",
+    "PreferedOrderCat_4.0"
+  ],
+  "reference_categories": {
+    "Gender": [
+      "Male",
+      "Female"
+    ],
+    "MaritalStatus": [
+      "Married",
+      "Divorced",
+      "Single"
+    ],
+    "PreferredLoginDevice": [
+      "Mobile Phone",
+      "Computer"
+    ],
+    "PreferredPaymentMode": [
+      "Debit Card",
+      "Cash on Delivery",
+      "Credit Card",
+      "E wallet",
+      "UPI"
+    ],
+    "PreferedOrderCat": [
+      "Mobile Phone",
+      "Fashion",
+      "Grocery",
+      "Laptop & Accessory",
+      "Others"
+    ]
+  },
+  "selected_missing_flags": [
+    "Tenure",
+    "WarehouseToHome",
+    "OrderAmountHikeFromlastYear",
+    "CouponUsed",
+    "OrderCount"
+  ],
+  "log_columns": [
+    "WarehouseToHome",
+    "NumberOfAddress",
+    "CouponUsed",
+    "OrderCount",
+    "DaySinceLastOrder",
+    "CashbackAmount"
+  ],
+  "config": {
+    "data_path": "data/raw/E Commerce Dataset (1).xlsx",
+    "sheet": "E Comm",
+    "report_dir": "reports/thesis_run",
+    "model_dir": "models/thesis_run",
+    "seed": 42,
+    "algorithms": [
+      "logistic_regression",
+      "decision_tree",
+      "random_forest",
+      "hist_gradient_boosting",
+      "xgboost"
+    ],
+    "scenarios": {
+      "P0": {
+        "sampling": "none",
+        "class_weight": false
+      },
+      "P1": {
+        "sampling": "none",
+        "class_weight": true
+      },
+      "P2": {
+        "sampling": "smotenc",
+        "class_weight": false,
+        "ratio": 1.0,
+        "k_neighbors": 3
+      },
+      "P3": {
+        "sampling": "smotenc",
+        "class_weight": false,
+        "ratio": 0.5,
+        "k_neighbors": 3
+      }
+    },
+    "cv_folds": 5,
+    "cv_repeats": 3,
+    "tuning_folds": 3,
+    "tuning_iterations": 10,
+    "bootstrap_iterations": 1000,
+    "ap_tolerance": 0.005,
+    "brier_tolerance": 0.005,
+    "tenure_threshold": 1,
+    "risk_groups": {
+      "low": [
+        1,
+        2
+      ],
+      "medium": [
+        3,
+        5
+      ],
+      "high": [
+        6,
+        10
+      ]
+    },
+    "holdout_previously_observed": true,
+    "label_semantics_verified": false,
+    "alias_mobile_order_category": "Assumption retained from previous experiment; no verified equivalence from source",
+    "selection_rule": "Highest 5-fold mean AP; scenarios within 0.005 or paired-difference SD may prefer P0/P1/P2/P3 if Brier degradation <=0.005. Tuned algorithms within 0.005 AP: lower Brier only if ECE does not worsen; otherwise higher AP. Sigmoid only if AP degradation <=0.005 and both Brier and quantile-bin ECE improve.",
+    "scope_resolution": "Detailed sections 3.5-3.9 supersede conflicting six-model overview. Repeated 5x3 used for feature/imbalance stability, first five folds for benchmark selection, three folds for tuning. No Agent/LLM/API/UI."
+  },
+  "versions": {
+    "pandas": "3.1.0",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "statsmodels": "0.15.0",
+    "scikit-learn": "1.9.1",
+    "imbalanced-learn": "0.14.2",
+    "xgboost": "3.4.1",
+    "shap": "0.54.1",
+    "matplotlib": "3.11.2",
+    "joblib": "1.6.0",
+    "openpyxl": "3.1.5"
+  },
+  "python": "3.15.1",
+  "source_sha256": "db70f1e34bc5326887ea3fb3d2a0854e82c577d55ef3a76fdfb25328631bd44d",
+  "holdout_previously_observed": true,
+  "prediction_contract": "Raw feature-only DataFrame; aliases normalized inside pipeline; input columns reordered by saved schema; no ID/target/extra columns"
+}

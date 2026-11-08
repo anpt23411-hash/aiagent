@@ -1,0 +1,14 @@
+# Trùng phiên bản với môi trường huấn luyện (metadata.json → versions) để tải pipeline.joblib đúng cách.
+scikit-learn==1.9.1
+imbalanced-learn==0.14.2
+shap==0.54.1
+numpy==2.5.4
+pandas==3.1.0
+scipy==1.18.1
+statsmodels==0.15.0
+joblib==1.6.0
+threadpoolctl==3.7.0
+sklearn-compat==0.1.6
+# Dịch vụ web
+fastapi==0.162.1
+uvicorn==0.54.0
